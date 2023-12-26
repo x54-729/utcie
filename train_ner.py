@@ -113,17 +113,17 @@ fitlog.add_other(name='info', value='biaffine_gelu+2ul_pos')
 def get_data(dataset_name, model_name):
     if dataset_name in ('conll2003', 'conll2003_'):  # conll2003_是concat了train/dev的
         pipe = ConllPipe(model_name=model_name)
-        paths = {"train": "../dataset/conll2003/train.txt",
-                 "dev": "../dataset/conll2003/testa.txt",
-                 'test': "../dataset/conll2003/test.txt"}
+        paths = {"train": "./dataset/conll2003/train.txt",
+                 "dev": "./dataset/conll2003/valid.txt",
+                 'test': "./dataset/conll2003/test.txt"}
     elif dataset_name == 'ontonotes':
         pipe = ConllPipe(model_name=model_name)
-        paths = '../dataset/en-ontonotes/english'
+        paths = './dataset/en-ontonotes/english'
     if dataset_name in ('dconll2003',):  # conll2003_是concat了train/dev的
         pipe = NERDocPipe(model_name=model_name, max_len=400)
-        paths = {"train": "../dataset/conll2003/train.txt",
-                 "dev": "../dataset/conll2003/testa.txt",
-                 'test': "../dataset/conll2003/test.txt"}
+        paths = {"train": "./dataset/conll2003/train.txt",
+                 "dev": "./dataset/conll2003/valid.txt",
+                 'test': "./dataset/conll2003/test.txt"}
     elif dataset_name == 'dontonotes':
         pipe = NERDocPipe(model_name=model_name, max_len=400)
         paths = '../dataset/en-ontonotes/english'
