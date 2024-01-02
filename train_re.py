@@ -16,8 +16,8 @@ import numpy as np
 
 import fastNLP
 from fastNLP import cache_results, prepare_torch_dataloader, print
-from fastNLP import Trainer
-from fastNLP import TorchGradClipCallback
+from fastNLP import Trainer, Evaluator
+from fastNLP import TorchGradClipCallback, LoadBestModelCallback
 from fastNLP import SortedSampler, BucketedBatchSampler
 from fastNLP.core.dataloaders.utils import OverfitDataLoader
 import fitlog
@@ -126,26 +126,26 @@ def get_data(dataset_name, model_name):
     if dataset_name == 'sciere':
         # 20220628经过确认，当前数据是没有加入对称关系信息的
         pipe = RePipe(model_name)
-        paths = '../dataset/UniRE_SciERC'
+        paths = './dataset/UniRE_SciERC'
     elif dataset_name == 'ace2005':
         # 20220628经过确认，当前数据是没有加入对称关系信息的
         pipe = RePipe(model_name)
-        paths = '../dataset/UniRE_ace2005'
+        paths = './dataset/UniRE_ace2005'
     elif dataset_name == 'tplinker_webnlg':
         pipe = NoEntTypeRePipe(model_name=model_name)
-        paths = '../dataset/tplinker_webnlg'
+        paths = './dataset/tplinker_webnlg'
     elif dataset_name == 'tplinker_nyt':
         pipe = NoEntTypeRePipe(model_name=model_name)
-        paths = '../dataset/tplinker_nyt'
+        paths = './dataset/tplinker_nyt'
     elif dataset_name == 'onerel_nyt':
         pipe = OneRelPipe(model_name=model_name)
-        paths = '../dataset/onerel_NYT'
+        paths = './dataset/onerel_NYT'
     elif dataset_name == 'onerel_webnlg':
         pipe = OneRelPipe(model_name=model_name)
-        paths = '../dataset/onerel_WebNLG'
+        paths = './dataset/onerel_WebNLG'
     elif dataset_name == 'onerel_webnlg_':
         pipe = OneRelPipe(model_name=model_name)
-        paths = '../dataset/onerel_WebNLG'
+        paths = './dataset/onerel_WebNLG'
         dl = pipe.process_from_file(paths, replicate=True)
         return dl, pipe.matrix_segs
     dl = pipe.process_from_file(paths)
@@ -241,6 +241,7 @@ callbacks = []
 callbacks.append(FitlogCallback())
 callbacks.append(TorchGradClipCallback(clip_value=1))
 callbacks.append(TorchWarmupCallback(warmup=args.warmup, schedule=schedule))
+callbacks.append(LoadBestModelCallback(monitor=None, delete_after_train=False, save_folder=f"train_re_{args.dataset_name}"))
 
 evaluate_dls = {
     'dev': dls.get('dev'),
@@ -291,6 +292,13 @@ trainer = Trainer(model=model,
 
 trainer.run(num_train_batch_per_epoch=-1, num_eval_batch_per_dl=-1, num_eval_sanity_batch=1)
 # fitlog.add_other(name='save_path', value=load_callback.real_save_folder)
+
+evaluator = Evaluator(model=model, dataloaders=evaluate_dls,
+                      metrics={'f': ReMetric(matrix_segs=matrix_segs, ent_thres=ent_thres, rel_thres=rel_thres,
+                             allow_nested=allow_nested, symmetric=symmetric)},
+                      device=0, evaluate_fn='forward_re')
+results = evaluator.run()
+
 fitlog.finish()  # finish the logging
 
 # CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 train_v1.py

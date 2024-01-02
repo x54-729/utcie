@@ -16,8 +16,8 @@ import numpy as np
 
 import fastNLP
 from fastNLP import cache_results, prepare_torch_dataloader, print
-from fastNLP import Trainer
-from fastNLP import TorchGradClipCallback
+from fastNLP import Trainer, Evaluator
+from fastNLP import TorchGradClipCallback, LoadBestModelCallback
 from fastNLP import SortedSampler, BucketedBatchSampler
 from fastNLP.core.dataloaders.utils import OverfitDataLoader
 import fitlog
@@ -129,22 +129,22 @@ if 'SEARCH_ID' in os.environ:
 def get_data(dataset_name, model_name, use_sym=True, max_length=256):
     if dataset_name == 'sciere_':
         pipe = RePipe_(model_name, use_sym=use_sym, max_length=max_length)
-        paths = '../dataset/UniRE_SciERC'
+        paths = './dataset/UniRE_SciERC'
     elif dataset_name == 'ace2005_':  # 'ace2005_'就是如果左边短了就让右边多一点
         pipe = RePipe_(model_name, use_sym=use_sym, max_length=max_length)
-        paths = '../dataset/UniRE_ace2005'
+        paths = './dataset/UniRE_ace2005'
     if dataset_name == '_sciere':  # '_sciere'就是如果短了就短了把
         pipe = _RePipe(model_name, use_sym=use_sym, max_length=max_length)
-        paths = '../dataset/UniRE_SciERC'
+        paths = './dataset/UniRE_SciERC'
     elif dataset_name == '_ace2005':
         pipe = _RePipe(model_name, use_sym=use_sym, max_length=max_length)
-        paths = '../dataset/UniRE_ace2005'
+        paths = './dataset/UniRE_ace2005'
     elif dataset_name == 'race2005_':  # lower cased
         pipe = RRePipe_(model_name, use_sym=use_sym, max_length=max_length)
-        paths = '../dataset/UniRE_ace2005'
+        paths = './dataset/UniRE_ace2005'
     elif dataset_name == 'rsciere_':  # lower cased
         pipe = RRePipe_(model_name, use_sym=use_sym, max_length=max_length)
-        paths = '../dataset/UniRE_SciERC'
+        paths = './dataset/UniRE_SciERC'
     dl = pipe.process_from_file(paths)
     return dl, pipe.matrix_segs
 
@@ -253,6 +253,7 @@ callbacks = []
 callbacks.append(FitlogCallback())
 callbacks.append(TorchGradClipCallback(clip_value=1))
 callbacks.append(TorchWarmupCallback(warmup=args.warmup, schedule=schedule))
+callbacks.append(LoadBestModelCallback(monitor=None, delete_after_train=False, save_folder=f"train_sym_re_{args.dataset_name}"))
 
 evaluate_dls = {
     'dev': dls.get('dev'),
@@ -308,6 +309,13 @@ trainer = Trainer(model=model,
                   )
 
 trainer.run(num_train_batch_per_epoch=-1, num_eval_batch_per_dl=-1, num_eval_sanity_batch=1)
+
+
+evaluator = Evaluator(model=model, dataloaders=evaluate_dls,
+                      metrics=metrics,
+                      device=0, evaluate_fn='forward_re')
+results = evaluator.run()
+
 fitlog.finish()  # finish the logging
 
 # CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 train_sym_re.py --cross_depth 3 --use_ln 2 --empty_rel_weight 0.1 -b 32 -n 70 --lr 3e-5 --cross_dim 200 --biaffine_size 300 --drop_s1_p 0 -d race2005_ --model_name albert-xxlarge-v1 --use_size_embed 1

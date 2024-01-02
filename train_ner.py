@@ -17,7 +17,7 @@ import numpy as np
 import fastNLP
 from fastNLP import cache_results, prepare_torch_dataloader, print
 from fastNLP import Trainer, Evaluator
-from fastNLP import TorchGradClipCallback
+from fastNLP import TorchGradClipCallback, LoadBestModelCallback
 from fastNLP import SortedSampler, BucketedBatchSampler
 from fastNLP.core.dataloaders.utils import OverfitDataLoader
 import fitlog
@@ -253,6 +253,7 @@ callbacks = []
 callbacks.append(FitlogCallback())
 callbacks.append(TorchGradClipCallback(clip_value=1))
 callbacks.append(TorchWarmupCallback(warmup=args.warmup, schedule=schedule))
+callbacks.append(LoadBestModelCallback(monitor=None, delete_after_train=False, save_folder=f"train_ner_{args.dataset_name}"))
 
 evaluate_dls = {}
 if 'dev' in dls:
