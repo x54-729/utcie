@@ -249,10 +249,18 @@ class ACE2005Loader(Loader):
                 raw_tris = []
                 raw_args = []
                 used_ent_ids = []
+                flag = False
                 for event in event_mentions:
                     e_type = event['event_type']
                     s, e = event['trigger']['start'], event['trigger']['end']
-                    assert ''.join(tokens[s:e]) == event['trigger']['text'].replace(' ', '')
+
+                    try:
+                        assert ''.join(tokens[s:e]) == event['trigger']['text'].replace(' ', '')
+                    except AssertionError:
+                        # skip
+                        print(''.join(tokens[s:e]) + " | " + event['trigger']['text'].replace(' ', ''), data["sent_id"], event["id"])
+                        flag = True
+                        break
                     raw_tris.append((s, e - 1, e_type.lower() + ':' + event['event_subtype'] if is_ere else e_type))
                     _raw_args = []
                     arguments = event['arguments']
@@ -263,6 +271,9 @@ class ACE2005Loader(Loader):
                         _raw_args.append([s, e, arg['role'].lower()])
                         used_ent_ids.append(ent_id)
                     raw_args.append(_raw_args)
+                if flag:
+                    continue
+                    
                 for ent_id in used_ent_ids:
                     ent = ents[ent_id]
                     # 修改 ACE2005 train.oneie.json AGGRESSIVEVOICEDAILY_20041208.2133-2
