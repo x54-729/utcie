@@ -16,9 +16,9 @@ import numpy as np
 
 import fastNLP
 from fastNLP import cache_results, prepare_torch_dataloader, print
-from fastNLP import Trainer
+from fastNLP import Trainer, Evaluator
 from fastNLP import SortedSampler, BucketedBatchSampler
-from fastNLP import TorchGradClipCallback
+from fastNLP import TorchGradClipCallback, LoadBestModelCallback
 from fastNLP.core.dataloaders.utils import OverfitDataLoader
 import fitlog
 import torch
@@ -47,6 +47,13 @@ parser.add_argument('--use_s2', default=1, type=int)
 parser.add_argument('--drop_s1_p', default=0.1, type=float)
 parser.add_argument('--empty_rel_weight', default=0.1, type=float)
 parser.add_argument('--biaffine_size', default=200, type=int)
+parser.add_argument('--mode', default="utcie", type=str, choices=["utcie", "cnnie", "nopos", "noaxis", "nocnn", "noplus"])
+# utcie: 普通
+# cnnie：CNN-IE，移除了 Plusformer 的 Attention
+# nopos：移除所有 position embedding
+# noaxis: 将注意力改为共享
+# nocnn：移除 Plusformer 的 CNN
+# noplus：不使用 Plusformer
 
 args = parser.parse_args()
 dataset_name = args.dataset_name
@@ -142,34 +149,34 @@ fitlog.add_hyper(ARGS)
 def get_data(dataset_name, model_name):
     if dataset_name == 'ace05E':
         pipe = EEPipe(model_name)
-        paths = '../dataset/ace05E'
+        paths = './dataset/ace05E'
     elif dataset_name == 'ace05E+':
         pipe = EEPipe(model_name)
-        paths = '../dataset/ace05E+'
+        paths = './dataset/ace05E+'
     elif dataset_name == 'ere':
         pipe = EEPipe(model_name)
-        paths = '../dataset/ERE_text2event'
+        paths = './dataset/ERE_text2event'
     if dataset_name == 'ace05E_':  # 不考虑对称
         pipe = EEPipe_(model_name)
-        paths = '../dataset/ace05E'
+        paths = './dataset/ace05E'
     elif dataset_name == 'ace05E+_':
         pipe = EEPipe_(model_name)
-        paths = '../dataset/ace05E+'
+        paths = './dataset/ace05E+'
     elif dataset_name == 'ere_':
         pipe = EEPipe_(model_name)
     if dataset_name == 'oace05E':  # 以o开头的是模仿oneie的做法，一个role只出现在一个trigger那里；同时nested的entity取前面那个
         pipe = EEPipe(model_name)
-        paths = '../dataset/ace05E'
+        paths = './dataset/ace05E'
         dl = pipe.process_from_file(paths, True)
         return dl, pipe.matrix_segs
     elif dataset_name == 'oace05E+':
         pipe = EEPipe(model_name)
-        paths = '../dataset/ace05E+'
+        paths = './dataset/ace05E+'
         dl = pipe.process_from_file(paths, True)
         return dl, pipe.matrix_segs
     elif dataset_name == 'oere':
         pipe = EEPipe(model_name)
-        paths = '../dataset/ERE_text2event'
+        paths = './dataset/ERE_text2event'
         dl = pipe.process_from_file(paths, True)
         return dl, pipe.matrix_segs
     dl = pipe.process_from_file(paths)
@@ -250,7 +257,8 @@ for name, ds in dl.iter_datasets():
 model = UnifyModel(model_name, matrix_segs, use_at_loss=use_at_loss, cross_dim=args.cross_dim,
                    cross_depth=args.cross_depth, biaffine_size=args.biaffine_size, use_ln=args.use_ln,
                    drop_s1_p=args.drop_s1_p, use_s2=args.use_s2, empty_rel_weight=args.empty_rel_weight,
-                   attn_dropout=args.attn_dropout, use_tri_bias=use_tri_bias)
+                   attn_dropout=args.attn_dropout, use_tri_bias=use_tri_bias,
+                   mode=args.mode)
 
 # optimizer
 parameters = []
@@ -285,6 +293,7 @@ callbacks = []
 callbacks.append(FitlogCallback())
 callbacks.append(TorchGradClipCallback(clip_value=1))
 callbacks.append(TorchWarmupCallback(warmup=args.warmup, schedule=schedule))
+callbacks.append(LoadBestModelCallback(monitor=None, delete_after_train=False, save_folder=f"{args.mode}_train_ee_{args.dataset_name}"))
 
 evaluate_dls = {
     'dev': dls.get('dev'),
@@ -330,6 +339,14 @@ trainer = Trainer(model=model,
                   train_fn='forward_ee', evaluate_fn='forward_ee')
 
 trainer.run(num_train_batch_per_epoch=-1, num_eval_batch_per_dl=-1, num_eval_sanity_batch=0)
+
+evaluator = Evaluator(model=model, dataloaders=evaluate_dls,
+                      metrics=metrics,
+                      device=0, evaluate_fn='forward_ee')
+# evaluator.load_model("/mnt/petrelfs/xingshuhao.dispatch/utcie/train_ee_ace05E+/2024-01-03-11_56_57_719926/best_so_far")
+results = evaluator.run()
+
+
 fitlog.finish()  # finish the logging
 
 # CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 train_v1.py

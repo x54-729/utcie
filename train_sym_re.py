@@ -54,6 +54,13 @@ parser.add_argument('--symmetric', default=True, type=int)  # 没有这个值的
 parser.add_argument('--use_tri_bias', default=True, type=int)
 parser.add_argument('--use_size_embed', default=False, type=int)  # 没有这个值的记录，为False, 这个用来控制选择entity的时候是否选择 上下三角相加
 parser.add_argument('--hidden_dropout', default=None, type=float)  # pretrain model是否没有dropout，给albert用的
+parser.add_argument('--mode', default="utcie", type=str, choices=["utcie", "cnnie", "nopos", "noaxis", "nocnn", "noplus"])
+# utcie: 普通
+# cnnie：CNN-IE，移除了 Plusformer 的 Attention
+# nopos：移除所有 position embedding
+# noaxis: 将注意力改为共享
+# nocnn：移除 Plusformer 的 CNN
+# noplus：不使用 Plusformer
 
 args = parser.parse_args()
 dataset_name = args.dataset_name
@@ -219,7 +226,8 @@ for name, ds in dl.iter_datasets():
 model = UnifyModel(model_name, matrix_segs, use_at_loss=use_at_loss, cross_dim=args.cross_dim,
                    cross_depth=args.cross_depth, biaffine_size=args.biaffine_size, use_ln=args.use_ln,
                    drop_s1_p=args.drop_s1_p, use_s2=args.use_s2, empty_rel_weight=args.empty_rel_weight,
-                   attn_dropout=args.attn_dropout, use_tri_bias=use_tri_bias)
+                   attn_dropout=args.attn_dropout, use_tri_bias=use_tri_bias,
+                   mode=args.mode)
 
 # optimizer
 parameters = []
@@ -253,7 +261,7 @@ callbacks = []
 callbacks.append(FitlogCallback())
 callbacks.append(TorchGradClipCallback(clip_value=1))
 callbacks.append(TorchWarmupCallback(warmup=args.warmup, schedule=schedule))
-callbacks.append(LoadBestModelCallback(monitor=None, delete_after_train=False, save_folder=f"train_sym_re_{args.dataset_name}"))
+callbacks.append(LoadBestModelCallback(monitor=None, delete_after_train=False, save_folder=f"{args.mode}_train_sym_re_{args.dataset_name}"))
 
 evaluate_dls = {
     'dev': dls.get('dev'),

@@ -3,6 +3,7 @@ import math
 from torch import nn
 import numpy as np
 import torch
+from fastNLP import logger
 
 from model.args import ARGS
 from model.mask_cnn import MaskConv2d
@@ -10,6 +11,7 @@ from model.mask_cnn import MaskConv2d
 class CrossTransformer(nn.Module):
     def __init__(self, dim, dropout=0.3, use_tri_bias=True, scale=False):
         super().__init__()
+        logger.info("Initializing CrossTransformer without position embedding")
         self.h_dim = dim
         self.use_tri_bias = use_tri_bias
 

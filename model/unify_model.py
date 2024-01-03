@@ -8,17 +8,12 @@ from torch_scatter import scatter_max
 from transformers import AutoModel
 
 from model.args import ARGS
-from model.cross_transformer import CrossTransformer
-# from model.cross_transformer_without_pos_emb import CrossTransformer
-# from model.cross_transformer_without_cnn import CrossTransformer
-# from model.cross_transformer_without_axis_aware import CrossTransformer
-# from model.cross_transformer_cnn_only import CrossTransformer
 
 
 class UnifyModel(nn.Module):
     def __init__(self, model_name, matrix_segs, use_at_loss=True, cross_dim=200, cross_depth=3,
                  biaffine_size=200, use_ln=False, drop_s1_p=0.1, use_s2=False, empty_rel_weight=0.1,
-                 attn_dropout=0.15, use_tri_bias=True):
+                 attn_dropout=0.15, use_tri_bias=True, mode="utcie"):
         super(UnifyModel, self).__init__()
         self.matrix_segs = matrix_segs
         self.drop_s1_p = drop_s1_p
@@ -81,6 +76,19 @@ class UnifyModel(nn.Module):
             torch.nn.init.xavier_normal_(self.W.data)
 
         layers = []
+        if mode == "utcie":
+            from model.cross_transformer import CrossTransformer
+        elif mode == "nopos":
+            from model.cross_transformer_without_pos_emb import CrossTransformer
+        elif mode == "nocnn":
+            from model.cross_transformer_without_cnn import CrossTransformer
+        elif mode == "noaxis":
+            from model.cross_transformer_without_axis_aware import CrossTransformer
+        elif mode == "cnnie":
+            from model.cross_transformer_cnn_only import CrossTransformer
+        elif mode == "noplus":
+            cross_depth = 0
+            from model.cross_transformer import CrossTransformer
         if cross_depth > 0:
             for i in range(cross_depth):
                 layers.append(CrossTransformer(dim=cross_dim, dropout=attn_dropout, use_tri_bias=use_tri_bias,

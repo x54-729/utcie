@@ -16,8 +16,8 @@ import numpy as np
 
 import fastNLP
 from fastNLP import cache_results, prepare_torch_dataloader, print
-from fastNLP import Trainer
-from fastNLP import TorchGradClipCallback
+from fastNLP import Trainer, Evaluator
+from fastNLP import TorchGradClipCallback, LoadBestModelCallback
 from fastNLP import SortedSampler, BucketedBatchSampler
 from fastNLP.core.dataloaders.utils import OverfitDataLoader
 import fitlog
@@ -48,6 +48,13 @@ parser.add_argument('--drop_s1_p', default=0.1, type=float)
 parser.add_argument('--empty_rel_weight', default=0.1, type=float)
 parser.add_argument('--biaffine_size', default=200, type=int)
 parser.add_argument('--use_size_embed', default=False, type=int)
+parser.add_argument('--mode', default="utcie", type=str, choices=["utcie", "cnnie", "nopos", "noaxis", "nocnn", "noplus"])
+# utcie: 普通
+# cnnie：CNN-IE，移除了 Plusformer 的 Attention
+# nopos：移除所有 position embedding
+# noaxis: 将注意力改为共享
+# nocnn：移除 Plusformer 的 CNN
+# noplus：不使用 Plusformer
 
 args = parser.parse_args()
 dataset_name = args.dataset_name
@@ -144,28 +151,28 @@ fitlog.add_hyper(ARGS)
 def get_data(dataset_name, model_name):
     if dataset_name == 'ace05E':
         pipe = OneIEPipe(model_name)
-        paths = '../dataset/ace05E'
+        paths = './dataset/ace05E'
     elif dataset_name == 'ace05E+':
         pipe = OneIEPipe(model_name)
-        paths = '../dataset/ace05E+'
+        paths = './dataset/ace05E+'
     elif dataset_name == 'ere':
         pipe = OneIEPipe(model_name)
-        paths = '../dataset/ERE'
+        paths = './dataset/ERE'
     elif dataset_name == 'cn_ace05':
         pipe = OneIEPipe(model_name)
-        paths = '../dataset/ace2005_cn_oneie'
+        paths = './dataset/ace2005_cn_oneie'
     if dataset_name == 'oace05E':
         pipe = FollowOneIEPipe(model_name)
-        paths = '../dataset/ace05E'
+        paths = './dataset/ace05E'
     elif dataset_name == 'oace05E+':
         pipe = FollowOneIEPipe(model_name)
-        paths = '../dataset/ace05E+'
+        paths = './dataset/ace05E+'
     elif dataset_name == 'oere':
         pipe = FollowOneIEPipe(model_name)
-        paths = '../dataset/ERE'
+        paths = './dataset/ERE'
     elif dataset_name == 'ocn_ace05':
         pipe = FollowOneIEPipe(model_name)
-        paths = '../dataset/ace2005_cn_oneie'
+        paths = './dataset/ace2005_cn_oneie'
     dl = pipe.process_from_file(paths)
     return dl, pipe.matrix_segs
 
@@ -229,7 +236,8 @@ for name, ds in dl.iter_datasets():
 model = UnifyModel(model_name, matrix_segs, use_at_loss=use_at_loss, cross_dim=args.cross_dim,
                    cross_depth=args.cross_depth, biaffine_size=args.biaffine_size, use_ln=args.use_ln,
                    drop_s1_p=args.drop_s1_p, use_s2=args.use_s2, empty_rel_weight=args.empty_rel_weight,
-                   attn_dropout=attn_dropout, use_tri_bias=use_tri_bias)
+                   attn_dropout=attn_dropout, use_tri_bias=use_tri_bias,
+                   mode=args.mode)
 
 # optimizer
 parameters = []
@@ -262,6 +270,7 @@ callbacks = []
 callbacks.append(FitlogCallback())
 callbacks.append(TorchGradClipCallback(clip_value=1))
 callbacks.append(TorchWarmupCallback(warmup=args.warmup, schedule=schedule))
+callbacks.append(LoadBestModelCallback(monitor=None, delete_after_train=False, save_folder=f"{args.mode}_train_ie_{args.dataset_name}"))
 
 evaluate_dls = {
     'dev': dls.get('dev'),

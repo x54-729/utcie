@@ -3,6 +3,7 @@ import math
 from torch import nn
 import numpy as np
 import torch
+from fastNLP import logger
 
 from model.args import ARGS
 
@@ -57,6 +58,7 @@ class CrossTransformer(nn.Module):
         Remove CNN and corresponding LayerNorm, Activation & Dropout
         """
         super().__init__()
+        logger.info("Initializing CrossTransformer without CNN")
         self.h_dim = dim
         self.use_tri_bias = use_tri_bias
         if use_tri_bias is True:

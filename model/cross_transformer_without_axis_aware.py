@@ -3,6 +3,7 @@ import math
 from torch import nn
 import numpy as np
 import torch
+from fastNLP import logger
 
 from model.args import ARGS
 from model.mask_cnn import MaskConv2d
@@ -55,9 +56,11 @@ class RoFormerSinusoidalPositionalEmbedding(nn.Embedding):
 class CrossTransformer(nn.Module):
     def __init__(self, dim, dropout=0.3, use_tri_bias=True, scale=False):
         """
-        Use qkv instead of h_qkv&v_qkv; Add h_v&v_v instead of torch.cat
+        Use qkv instead of h_qkv&v_qkv; Add h_v&v_v instead of torch.cat;
+        Change self.dense as dim * dim
         """
         super().__init__()
+        logger.info("Initializing CrossTransformer without axis awareness")
         self.h_dim = dim
         self.use_tri_bias = use_tri_bias
         if use_tri_bias is True:
@@ -84,7 +87,7 @@ class CrossTransformer(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.scale = math.sqrt(dim)
 
-        self.dense = nn.Linear(2 * dim, dim, bias=True)
+        self.dense = nn.Linear(dim, dim, bias=True)
         self.LayerNorm = nn.LayerNorm(dim)
 
         self.conv1 = MaskConv2d(dim, dim, kernel_size=3, padding=1)

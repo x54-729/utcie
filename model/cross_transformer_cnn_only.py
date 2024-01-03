@@ -3,6 +3,7 @@ import math
 from torch import nn
 import numpy as np
 import torch
+from fastNLP import logger
 
 from model.args import ARGS
 from model.mask_cnn import MaskConv2d
@@ -14,6 +15,7 @@ class CrossTransformer(nn.Module):
         CNN-IE
         """
         super().__init__()
+        logger.info("Initializing CrossTransformer with CNN only.")
         self.h_dim = dim
         self.use_tri_bias = use_tri_bias
         if use_tri_bias is True:
