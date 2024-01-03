@@ -9,6 +9,10 @@ from transformers import AutoModel
 
 from model.args import ARGS
 from model.cross_transformer import CrossTransformer
+# from model.cross_transformer_without_pos_emb import CrossTransformer
+# from model.cross_transformer_without_cnn import CrossTransformer
+# from model.cross_transformer_without_axis_aware import CrossTransformer
+# from model.cross_transformer_cnn_only import CrossTransformer
 
 
 class UnifyModel(nn.Module):
