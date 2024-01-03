@@ -65,6 +65,9 @@ if args.model_name is None:
     else:
         args.model_name = 'bert-large-cased'
 
+if args.cross_depth == 0:
+    args.mode = "noplus"
+
 model_name = args.model_name
 
 if 'base' in args.model_name:

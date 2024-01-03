@@ -66,6 +66,9 @@ if args.model_name is None:
     else:
         args.model_name = 'microsoft/deberta-v3-large'
 
+if args.cross_depth == 0:
+    args.mode = "noplus"
+
 model_name = args.model_name
 
 if torch.cuda.mem_get_info()[-1] > 30_043_904_512 and 'xlarge' in model_name:

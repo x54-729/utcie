@@ -72,6 +72,8 @@ if args.model_name is None:
 
 model_name = args.model_name
 ent_thres = args.ent_thres
+if args.cross_depth == 0:
+    args.mode = "noplus"
 if args.use_tri_bias:
     args.use_tri_bias = True
 else:

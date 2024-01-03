@@ -89,6 +89,8 @@ class UnifyModel(nn.Module):
         elif mode == "noplus":
             cross_depth = 0
             from model.cross_transformer import CrossTransformer
+        else:
+            raise NotImplementedError(f"Unknown mode {mode}")
         if cross_depth > 0:
             for i in range(cross_depth):
                 layers.append(CrossTransformer(dim=cross_dim, dropout=attn_dropout, use_tri_bias=use_tri_bias,

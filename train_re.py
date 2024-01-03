@@ -76,6 +76,8 @@ if args.model_name is None:
         raise RuntimeError
 
 model_name = args.model_name
+if args.cross_depth == 0:
+    args.mode = "noplus"
 if args.symmetric:
     args.symmetric = True
 else:
