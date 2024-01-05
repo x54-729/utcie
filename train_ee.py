@@ -346,7 +346,6 @@ trainer.run(num_train_batch_per_epoch=-1, num_eval_batch_per_dl=-1, num_eval_san
 evaluator = Evaluator(model=model, dataloaders=evaluate_dls,
                       metrics=metrics,
                       device=0, evaluate_fn='forward_ee')
-# evaluator.load_model("/mnt/petrelfs/xingshuhao.dispatch/utcie/train_ee_ace05E+/2024-01-03-11_56_57_719926/best_so_far")
 results = evaluator.run()
 
 
